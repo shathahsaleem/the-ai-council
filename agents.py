@@ -2,8 +2,9 @@ import os
 import time
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from schemas import CouncilState, AgentPosition, Rebuttal, DecisionMatrix
-from tools import search_web_resources
+from schemas import CouncilState, AgentPosition, Rebuttal, DecisionMatrix, UserContext
+from tools import search_web_resources, calculate_financial_runway
+
 
 load_dotenv()
 
@@ -55,7 +56,7 @@ def safe_invoke(structured_model, prompt, max_attempts=3):
 
 # Rate-limit throttle to stay within Google's free-tier requests/minute
 def throttle_api():
-    print("⏳ [Rate-limit protection] Pausing for 12 seconds...")
+    print("[Rate-limit protection] Pausing for 12 seconds...")
     time.sleep(12)
 
 # Helper function to list options nicely
@@ -107,6 +108,24 @@ def print_agent_rebuttal(agent_title: str, emoji: str, round_num: int, response,
             print(f"    {url}")
     print("-" * 65)
 
+def format_financials(context: UserContext) -> str:
+    """Calculates financial metrics if numbers are provided by the user."""
+    if context.liquid_savings is not None and context.monthly_expenses is not None:
+        income = context.current_income or 0.0
+        runway = calculate_financial_runway(
+            liquid_savings=context.liquid_savings,
+            monthly_expenses=context.monthly_expenses,
+            current_income=income
+        )
+        return (
+            f"Liquid Savings: ${context.liquid_savings:,.2f} | "
+            f"Monthly Expenses: ${context.monthly_expenses:,.2f} | "
+            f"Monthly Income: ${income:,.2f} | "
+            f"Net Monthly Burn: ${runway.net_monthly_burn:,.2f} | "
+            f"Calculated Runway: {runway.runway_months} months."
+        )
+    return "No structured financial numbers provided."
+
 
 # =========================================================================
 # 1. RISK ANALYST AGENT NODE
@@ -130,9 +149,10 @@ def risk_agent_node(state: CouncilState) -> dict:
         You prioritize worst-case scenarios, audit lead-times, regulatory burdens, and counterparty delivery failures over speculative growth claims.
 
         <untrusted_user_input>
-        DILEMMA: {context.dilemma_statement}
-        BACKGROUND & CONSTRAINTS: {context.background_context}
-        CANDIDATE OPTIONS:
+        Dilemma: {context.dilemma_statement}
+        Background: {context.background_context}
+        Financial Metrics: {format_financials(context)}
+        Options:
         {format_options(context.proposed_options)}
         </untrusted_user_input>
 
@@ -168,9 +188,13 @@ def risk_agent_node(state: CouncilState) -> dict:
         PREVIOUS REBUTTALS: {state.get('rebuttals')}
         </untrusted_debate_history>
 
-        <untrusted_retrieved_web_facts>
-        {web_context}
-        </untrusted_retrieved_web_facts>
+        <untrusted_user_input>
+        Dilemma: {context.dilemma_statement}
+        Background: {context.background_context}
+        Financial Metrics: {format_financials(context)}
+        Options:
+        {format_options(context.proposed_options)}
+        </untrusted_user_input>
 
         ### REBUTTAL INSTRUCTIONS:
         1. Target the agent whose proposal introduces the most hazardous financial or execution risk (e.g., Innovator or Philosopher).
@@ -211,9 +235,10 @@ def philosopher_agent_node(state: CouncilState) -> dict:
         You reject both reckless gambling and prolonged, soul-crushing stagnation.
 
         <untrusted_user_input>
-        DILEMMA: {context.dilemma_statement}
-        BACKGROUND & CONSTRAINTS: {context.background_context}
-        CANDIDATE OPTIONS:
+        Dilemma: {context.dilemma_statement}
+        Background: {context.background_context}
+        Financial Metrics: {format_financials(context)}
+        Options:
         {format_options(context.proposed_options)}
         </untrusted_user_input>
 
@@ -288,9 +313,10 @@ def innovator_agent_node(state: CouncilState) -> dict:
         You view prolonged stagnation as the fastest route to bankruptcy and champion decisive, offensive strategic moves over defensive cost-cutting.
 
         <untrusted_user_input>
-        DILEMMA: {context.dilemma_statement}
-        BACKGROUND & CONSTRAINTS: {context.background_context}
-        CANDIDATE OPTIONS:
+        Dilemma: {context.dilemma_statement}
+        Background: {context.background_context}
+        Financial Metrics: {format_financials(context)}
+        Options:
         {format_options(context.proposed_options)}
         </untrusted_user_input>
 

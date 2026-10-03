@@ -16,7 +16,11 @@ def run_council_demo():
             "Pivot fully to enterprise SaaS",
             "Maintain current B2C model and cut operational costs",
             "Hybrid model: Keep B2C live while building enterprise features"
-        ]
+        ],
+        #  NUMERICAL INPUTS:
+        liquid_savings=150000.0,
+        monthly_expenses=25000.0,
+        current_income=5000.0
     )
 
     initial_state: CouncilState = {
