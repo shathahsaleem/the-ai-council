@@ -27,16 +27,14 @@ def route_debate(state: CouncilState) -> str:
     if len(unique_choices) == 1:
         return "synthesize"
 
-    # Check 3: Debate Stalled (No position changes in the last turn)
-    if revision_count > 1 and state.get("rebuttals"):
-        last_round = [r for r in state["rebuttals"] if r.round_number == revision_count]
-        prev_round = [r for r in state["rebuttals"] if r.round_number == revision_count - 1]
+    # Check 3: Only check if rebuttals actually exist!
+    if state.get("rebuttals") and state.get("positions"):
+        initial_choices = {p.agent_name: p.preferred_option_index for p in state["positions"]}
+        rebuttal_choices = {r.agent_name: r.revised_option_index for r in state["rebuttals"]}
 
-        last_choices = {r.agent_name: r.revised_option_index for r in last_round}
-        prev_choices = {r.agent_name: r.revised_option_index for r in prev_round}
-
-        if last_choices and last_choices == prev_choices:
+        # Put this INSIDE the if block so it doesn't crash in Round 0
+        if initial_choices == rebuttal_choices:
             return "synthesize"
 
-    # If no stopping conditions were met, keep debating!
+    # If no stopping conditions were met, proceed to rebuttal round
     return "rebuttal"
