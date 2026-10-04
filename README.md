@@ -280,8 +280,8 @@ Install the following before running the project:
 ### 1. Clone the repository
 
 ```bash
-git clone <https://github.com/shathahsaleem/the-ai-council>
-cd "The AI Council"
+git clone https://github.com/shathahsaleem/the-ai-council
+cd "the-ai-council"
 ```
 
 ### 2. Create and activate a virtual environment
